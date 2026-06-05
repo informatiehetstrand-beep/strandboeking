@@ -278,26 +278,47 @@ export default function App() {
     return Object.keys(errs).length === 0;
   };
 
-  const handlePay = () => {
+  const handlePay = async () => {
     if (!validateCustomer()) return;
     setProcessing(true);
-    setTimeout(() => {
-      const newAvail = { ...avail };
-      PRODUCTS_INIT.forEach(p => { newAvail[p.id] = Math.max(0, newAvail[p.id] - quantities[p.id]); });
-      setAvail(newAvail);
-      const bookingId = genBookingId();
-      const items = PRODUCTS_INIT.filter(p => quantities[p.id] > 0).map(p => `${p.name} × ${quantities[p.id]}`).join(", ");
-      const newBooking = {
-        id: bookingId, name: customer.name, email: customer.email, phone: customer.phone,
-        date: selDate, product: items, qty: Object.values(quantities).reduce((a,b)=>a+b,0),
-        total: totalAmount, status: "confirmed", method: { ideal:"iDEAL",bancontact:"Bancontact",creditcard:"Creditcard",applepay:"Apple Pay" }[payMethod],
-        created: todayStr
-      };
-      setBookings(b => [newBooking, ...b]);
-      setConfirmed({ id: bookingId, date: selDate, items, total: totalAmount, name: customer.name, email: customer.email, method: newBooking.method });
+    try {
+      const producten = PRODUCTS_INIT
+        .filter(p => quantities[p.id] > 0)
+        .map(p => ({
+          id: p.id,
+          naam: p.name,
+          aantal: quantities[p.id],
+          prijs: prices[p.priceKey]
+        }));
+
+      const response = await fetch('https://strandboeking-api.vercel.app/api/betaling', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          datum: selDate,
+          producten,
+          klant: {
+            naam: customer.name,
+            email: customer.email,
+            telefoon: customer.phone
+          },
+          methode: payMethod
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.checkoutUrl) {
+        // Stuur door naar Mollie betaalpagina
+        window.location.href = data.checkoutUrl;
+      } else {
+        throw new Error(data.error || 'Onbekende fout');
+      }
+    } catch (err) {
+      console.error('Betaalfout:', err);
+      alert('Er ging iets mis bij het starten van de betaling. Probeer het opnieuw.');
       setProcessing(false);
-      setStep(5);
-    }, 3000);
+    }
   };
 
   const cancelBooking = (id) => {
