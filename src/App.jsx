@@ -824,4 +824,41 @@ export default function App() {
       {view==="booking" ? renderBooking() : renderAdmin()}
     </>
   );
-}
+}export function BevestigingsPagina() {
+  const [reservering, setReservering] = useState(null);
+  const [laden, setLaden] = useState(true);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const nr = params.get('nr');
+    if (nr) {
+      fetch(`https://strandboeking-api.vercel.app/api/reserveringen`)
+        .then(r => r.json())
+        .then(data => {
+          const res = data.find(r => r.reservering_nr === nr);
+          setReservering(res || { reservering_nr: nr });
+          setLaden(false);
+        })
+        .catch(() => {
+          setReservering({ reservering_nr: nr });
+          setLaden(false);
+        });
+    } else {
+      setLaden(false);
+    }
+  }, []);
+
+  if (laden) return (
+    <div style={{minHeight:'100vh',background:'#FDF6EE',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'DM Sans,sans-serif'}}>
+      <p>Reservering ophalen...</p>
+    </div>
+  );
+
+  return (
+    <div style={{minHeight:'100vh',background:'#FDF6EE',fontFamily:'DM Sans,sans-serif',padding:'2rem 1rem'}}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');`}</style>
+      <div style={{maxWidth:'560px',margin:'2rem auto',background:'#fff',borderRadius:'20px',padding:'2.5rem',border:'1px solid #E8DDD0',textAlign:'center'}}>
+        <div style={{fontSize:'4rem',marginBottom:'1rem'}}>🎉</div>
+        <h1 style={{fontFamily:'Playfair Display,serif',fontSize:'1.8rem',fontWeight:700,marginBottom:'0.5rem'}}>Reservering bevestigd!</h1>
+        <p style={{color:'#777',fontSize:'15px',marginBottom:'1.5rem',lineHeight:1.5}}>
+          {reservering?.naam ?
