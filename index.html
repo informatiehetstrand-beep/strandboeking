@@ -1,12 +1,258 @@
-<!doctype html>
+const express = require('express');
+const cors = require('cors');
+const { createClient } = require('@supabase/supabase-js');
+const { createMollieClient } = require('@mollie/api-client');
+const nodemailer = require('nodemailer');
+
+require('dotenv').config();
+
+const app = express();
+
+app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ─── CLIENTS ─────────────────────────────────────────────────────────────────
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
+
+const mollie = createMollieClient({
+  apiKey: process.env.MOLLIE_API_KEY
+});
+
+const mailer = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'mail.strandbedhuren.nl',
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
+
+// ─── HULPFUNCTIES ────────────────────────────────────────────────────────────
+function genereerReserveringNr() {
+  return 'RES-' + Date.now().toString(36).toUpperCase();
+}
+
+function formatDatum(datum) {
+  const [jaar, maand, dag] = datum.split('-');
+  const maanden = ['januari','februari','maart','april','mei','juni',
+    'juli','augustus','september','oktober','november','december'];
+  return `${parseInt(dag)} ${maanden[parseInt(maand)-1]} ${jaar}`;
+}
+
+function bevestigingsmail(reservering) {
+  const productenLijst = reservering.producten
+    .map(p => `<tr>
+      <td style="padding:8px 0;color:#555;border-bottom:1px solid #F0E8E0;">${p.naam} × ${p.aantal}</td>
+      <td style="padding:8px 0;text-align:right;font-weight:600;border-bottom:1px solid #F0E8E0;">€${(p.prijs * p.aantal).toFixed(2)}</td>
+    </tr>`)
+    .join('');
+
+  return `<!DOCTYPE html>
 <html lang="nl">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Strandboeking</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#FDF6EE;font-family:Arial,sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #E8DDD0;">
+    <div style="background:linear-gradient(135deg,#C25B20,#E8824A);padding:32px;text-align:center;">
+      <h1 style="color:#fff;font-size:22px;margin:0 0 6px;">🌊 Reservering bevestigd!</h1>
+      <p style="color:rgba(255,255,255,0.85);margin:0;font-size:14px;">Jouw stranddag staat vast</p>
+    </div>
+    <div style="padding:28px 32px;">
+      <p style="font-size:15px;color:#333;margin:0 0 16px;">Beste <strong>${reservering.naam}</strong>,</p>
+      <p style="font-size:14px;color:#555;line-height:1.6;margin:0 0 24px;">
+        Je reservering is bevestigd en je betaling is ontvangen. We kijken ernaar uit je te verwelkomen op het strand!
+      </p>
+      <div style="background:#FFF8F3;border-radius:10px;padding:16px;margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-size:12px;color:#999;text-transform:uppercase;">Reserveringsnummer</span>
+          <span style="font-size:14px;font-weight:700;color:#C25B20;">${reservering.reservering_nr}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-size:12px;color:#999;text-transform:uppercase;">Datum</span>
+          <span style="font-size:14px;font-weight:500;">${formatDatum(reservering.datum)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-size:12px;color:#999;text-transform:uppercase;">Betaalmethode</span>
+          <span style="font-size:14px;font-weight:500;">${reservering.betaal_methode || 'Online betaald'}</span>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+        <thead>
+          <tr style="border-bottom:2px solid #E8DDD0;">
+            <th style="padding:8px 0;text-align:left;font-size:12px;color:#999;text-transform:uppercase;">Product</th>
+            <th style="padding:8px 0;text-align:right;font-size:12px;color:#999;text-transform:uppercase;">Bedrag</th>
+          </tr>
+        </thead>
+        <tbody>${productenLijst}</tbody>
+        <tfoot>
+          <tr>
+            <td style="padding:12px 0;font-weight:700;font-size:15px;">Totaal betaald</td>
+            <td style="padding:12px 0;text-align:right;font-weight:700;font-size:15px;color:#C25B20;">€${parseFloat(reservering.totaal).toFixed(2)}</td>
+          </tr>
+        </tfoot>
+      </table>
+      <div style="background:#E1F5EE;border-radius:10px;padding:16px;margin-bottom:24px;">
+        <p style="margin:0;font-size:13px;color:#0F6E56;line-height:1.5;">
+          📍 Laat dit e-mailadres of je reserveringsnummer zien bij aankomst.
+        </p>
+      </div>
+      <p style="font-size:13px;color:#999;margin:0;text-align:center;">
+        Tot ziens op het strand! 🏖️<br>
+        <strong style="color:#C25B20;">StrandBedHuren.nl</strong>
+      </p>
+    </div>
+    <div style="background:#F7F0E8;padding:16px 32px;text-align:center;">
+      <p style="font-size:11px;color:#bbb;margin:0;">
+        Je ontvangt deze mail omdat je een reservering hebt gemaakt via strandbedhuren.nl
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+// ─── ROUTES ──────────────────────────────────────────────────────────────────
+
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'Strandboeking API draait!' });
+});
+
+app.get('/api/prijzen', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('prijzen').select('*');
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Kon prijzen niet ophalen' });
+  }
+});
+
+app.get('/api/reserveringen', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('reserveringen')
+      .select('*')
+      .order('aangemaakt_op', { ascending: false });
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Kon reserveringen niet ophalen' });
+  }
+});
+
+app.post('/api/betaling', async (req, res) => {
+  try {
+    const { datum, producten, klant, methode } = req.body;
+
+    if (!datum || !producten || !klant || !klant.naam || !klant.email) {
+      return res.status(400).json({ error: 'Verplichte velden ontbreken' });
+    }
+
+    const totaal = producten.reduce((s, p) => s + (p.prijs * p.aantal), 0);
+    const nr = genereerReserveringNr();
+
+    await supabase.from('reserveringen').insert({
+      reservering_nr: nr,
+      naam: klant.naam,
+      email: klant.email,
+      telefoon: klant.telefoon || '',
+      datum,
+      producten,
+      totaal,
+      status: 'pending'
+    });
+
+    const payment = await mollie.payments.create({
+      amount: { currency: 'EUR', value: totaal.toFixed(2) },
+      description: `Strandboeking ${nr} — ${formatDatum(datum)}`,
+      redirectUrl: `${process.env.FRONTEND_URL}/bevestiging?nr=${nr}`,
+      webhookUrl: `${process.env.API_URL}/api/webhook`,
+      method: methode || undefined,
+      metadata: { reservering_nr: nr, klant_email: klant.email, klant_naam: klant.naam }
+    });
+
+    await supabase.from('reserveringen')
+      .update({ mollie_payment_id: payment.id })
+      .eq('reservering_nr', nr);
+
+    res.json({ checkoutUrl: payment._links.checkout.href, nr });
+
+  } catch (err) {
+    console.error('Betaling fout:', err);
+    res.status(500).json({ error: 'Betaling kon niet worden gestart' });
+  }
+});
+
+app.post('/api/webhook', async (req, res) => {
+  try {
+    const { id } = req.body;
+    if (!id) return res.status(400).send('Geen payment ID');
+
+    const payment = await mollie.payments.get(id);
+    const nr = payment.metadata?.reservering_nr;
+    if (!nr) return res.status(400).send('Geen reserveringsnummer');
+
+    if (payment.status === 'paid') {
+      await supabase.from('reserveringen')
+        .update({ status: 'confirmed', betaal_methode: payment.method })
+        .eq('reservering_nr', nr);
+
+      const { data: reservering } = await supabase
+        .from('reserveringen').select('*').eq('reservering_nr', nr).single();
+
+      if (reservering) {
+        await mailer.sendMail({
+          from: `StrandBedHuren.nl <${process.env.SMTP_USER}>`,
+          to: reservering.email,
+          subject: `✅ Reservering bevestigd — ${nr}`,
+          html: bevestigingsmail(reservering)
+        });
+      }
+
+    } else if (['expired','failed','canceled'].includes(payment.status)) {
+      await supabase.from('reserveringen')
+        .update({ status: 'cancelled' })
+        .eq('reservering_nr', nr);
+    }
+
+    res.status(200).send('OK');
+
+  } catch (err) {
+    console.error('Webhook fout:', err);
+    res.status(500).send('Webhook fout');
+  }
+});
+
+app.patch('/api/reserveringen/:nr/annuleer', async (req, res) => {
+  try {
+    const { nr } = req.params;
+    const { error } = await supabase.from('reserveringen')
+      .update({ status: 'cancelled' }).eq('reservering_nr', nr);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Kon niet annuleren' });
+  }
+});
+
+app.patch('/api/prijzen/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { prijs } = req.body;
+    const { error } = await supabase.from('prijzen')
+      .update({ prijs }).eq('product_id', id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Kon prijs niet bijwerken' });
+  }
+});
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(`Strandboeking API draait op poort ${PORT}`));
+
+module.exports = app;
