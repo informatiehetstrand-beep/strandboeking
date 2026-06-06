@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const API = "https://strandboeking-api.vercel.app";
+const API = "https://www.strandbedhuren.nl";
 
 const STYLE = `
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -216,7 +216,7 @@ export function BevestigingsPagina() {
               </div>
             ))}
           </div>
-          <a href="https://strandboeking.vercel.app" style={{display:"block",background:"#C25B20",color:"#fff",padding:"14px 24px",borderRadius:"12px",textDecoration:"none",fontWeight:600,fontSize:"15px"}}>
+          <a href="https://www.strandbedhuren.nl" style={{display:"block",background:"#C25B20",color:"#fff",padding:"14px 24px",borderRadius:"12px",textDecoration:"none",fontWeight:600,fontSize:"15px"}}>
             Nieuwe reservering maken
           </a>
         </div>
