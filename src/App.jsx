@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 
-const API = "https://www.strandbedhuren.nl";
+const API = "https://strandboeking-api.vercel.app";
+const SUPABASE_URL = "https://bdjmxkuovhadqggemugn.supabase.co";
+const SUPABASE_KEY = "sb_publishable_g62FHY9rlS_QA7jWRvSjnw_lefk8E0I";
 
 const STYLE = `
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -39,11 +41,12 @@ body { font-family: 'DM Sans', sans-serif; }
 .cal-btn:hover { border-color: #C25B20; color: #C25B20; }
 .card { background: #fff; border-radius: 16px; padding: 1.5rem; border: 1px solid #E8DDD0; margin-bottom: 1.5rem; }
 .products { display: grid; gap: 16px; }
-.product-card { background: #fff; border: 2px solid #E8DDD0; border-radius: 16px; padding: 1.25rem; transition: all 0.2s; position: relative; }
+.product-card { background: #fff; border: 2px solid #E8DDD0; border-radius: 16px; overflow: hidden; transition: all 0.2s; position: relative; }
 .product-card.selected { border-color: #C25B20; background: #FFF8F3; }
-.badge { position: absolute; top: -10px; left: 20px; background: #C25B20; color: #fff; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 10px; text-transform: uppercase; }
-.p-inner { display: flex; gap: 1rem; align-items: flex-start; }
-.p-icon { font-size: 2.5rem; }
+.product-img { width: 100%; height: 160px; object-fit: cover; background: #F0E8E0; display: flex; align-items: center; justify-content: center; font-size: 3rem; }
+.product-img img { width: 100%; height: 100%; object-fit: cover; }
+.product-body { padding: 1rem; }
+.badge { position: absolute; top: 10px; left: 10px; background: #C25B20; color: #fff; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 10px; text-transform: uppercase; }
 .p-name { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
 .p-desc { font-size: 13px; color: #777; line-height: 1.5; margin-bottom: 0.75rem; }
 .p-footer { display: flex; align-items: center; justify-content: space-between; }
@@ -89,15 +92,6 @@ body { font-family: 'DM Sans', sans-serif; }
 .progress-bar { height: 4px; background: #F0E8E0; border-radius: 2px; overflow: hidden; margin: 1rem 0; }
 .progress-fill { height: 100%; background: #C25B20; border-radius: 2px; animation: prog 2.8s ease-in-out forwards; }
 @keyframes prog { from { width: 0% } to { width: 100% } }
-.conf-card { background: #fff; border-radius: 20px; padding: 2.5rem; text-align: center; border: 1px solid #E8DDD0; }
-.conf-icon { font-size: 4rem; margin-bottom: 1rem; }
-.conf-title { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem; }
-.conf-sub { color: #777; font-size: 15px; margin-bottom: 1.5rem; line-height: 1.5; }
-.conf-details { background: #FFF8F3; border-radius: 12px; padding: 1.25rem; text-align: left; margin-bottom: 1.5rem; }
-.conf-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; border-bottom: 1px solid #F0E8E0; }
-.conf-row:last-child { border-bottom: none; }
-.conf-row span:first-child { color: #777; }
-.conf-row span:last-child { font-weight: 500; }
 .admin-layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 64px); }
 .admin-side { background: #1a1a1a; padding: 1.5rem 0; }
 .admin-side-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #666; padding: 0 1.25rem; margin-bottom: 0.5rem; }
@@ -123,18 +117,22 @@ body { font-family: 'DM Sans', sans-serif; }
 .icon-btn { background: none; border: 1px solid #E8DDD0; border-radius: 8px; width: 32px; height: 32px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; color: #888; transition: all 0.15s; font-size: 15px; }
 .icon-btn:hover { border-color: #C25B20; color: #C25B20; }
 .icon-btn.danger:hover { border-color: #E24B4A; color: #E24B4A; }
-.price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-.price-card { background: #fff; border-radius: 12px; padding: 1.25rem; border: 1px solid #E8DDD0; }
-.price-input-row { display: flex; align-items: center; gap: 8px; }
-.price-input { flex: 1; padding: 8px 10px; border: 1.5px solid #E8DDD0; border-radius: 8px; font-size: 15px; font-weight: 600; color: #C25B20; font-family: 'DM Sans', sans-serif; outline: none; }
-.price-input:focus { border-color: #C25B20; }
-.avail-list { display: grid; gap: 12px; }
-.avail-row { background: #fff; border-radius: 12px; padding: 1rem 1.25rem; border: 1px solid #E8DDD0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.prod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.prod-admin-card { background: #fff; border-radius: 12px; border: 1px solid #E8DDD0; overflow: hidden; }
+.prod-admin-img { width: 100%; height: 140px; object-fit: cover; background: #F0E8E0; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; }
+.prod-admin-img img { width: 100%; height: 100%; object-fit: cover; }
+.prod-admin-body { padding: 1rem; }
+.prod-admin-name { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+.prod-admin-desc { font-size: 12px; color: #888; margin-bottom: 8px; line-height: 1.4; }
+.prod-admin-footer { display: flex; justify-content: space-between; align-items: center; }
 .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
-.modal { background: #fff; border-radius: 20px; padding: 1.5rem; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
+.modal { background: #fff; border-radius: 20px; padding: 1.5rem; max-width: 540px; width: 100%; max-height: 90vh; overflow-y: auto; }
 .modal-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
 .modal-title { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 600; }
 .close-x { background: none; border: none; font-size: 20px; cursor: pointer; color: #888; }
+.upload-area { border: 2px dashed #E8DDD0; border-radius: 12px; padding: 1.5rem; text-align: center; cursor: pointer; transition: all 0.2s; }
+.upload-area:hover { border-color: #C25B20; background: #FFF8F3; }
+.upload-preview { width: 100%; height: 160px; object-fit: cover; border-radius: 10px; margin-top: 0.75rem; }
 @media (max-width: 640px) {
   .admin-layout { grid-template-columns: 1fr; }
   .admin-side { display: none; }
@@ -142,12 +140,6 @@ body { font-family: 'DM Sans', sans-serif; }
   .main { padding: 1.25rem 0.75rem 3rem; }
 }
 `;
-
-const PRODS = [
-  { id:"ligbed", name:"Ligbed", icon:"🏖️", desc:"Comfortabel ligbed met parasol en handdoek.", priceKey:"ligbed", perUnit:"per stuk", popular:false },
-  { id:"cabine", name:"Strandcabine", icon:"🏠", desc:"Privé cabine met kleedruimte en 2 stoelen.", priceKey:"cabine", perUnit:"per cabine", popular:true },
-  { id:"combo", name:"Cabine + 2 Ligbedden", icon:"⭐", desc:"Cabine inclusief 2 ligbedden. Complete stranddag.", priceKey:"combo", perUnit:"per combi", popular:false },
-];
 
 const NL_M = ["januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"];
 const NL_D = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
@@ -158,8 +150,36 @@ function formatDate(d) {
   return `${parseInt(day)} ${NL_M[parseInt(m)-1]} ${y}`;
 }
 
-function genId() {
-  return "RES-" + Math.random().toString(36).substr(2,6).toUpperCase();
+async function uploadAfbeelding(file) {
+  const ext = file.name.split('.').pop();
+  const naam = `product-${Date.now()}.${ext}`;
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/product-images/${naam}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': file.type,
+      'x-upsert': 'true'
+    },
+    body: file
+  });
+  if (!res.ok) throw new Error('Upload mislukt');
+  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${naam}`;
+}
+
+async function supabaseFetch(path, options = {}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...options,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': options.method === 'POST' ? 'return=representation' : undefined,
+      ...options.headers
+    }
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
 }
 
 // ─── BEVESTIGINGSPAGINA ───────────────────────────────────────────────────────
@@ -178,13 +198,8 @@ export function BevestigingsPagina() {
           setReservering(res || { reservering_nr: nr });
           setLaden(false);
         })
-        .catch(() => {
-          setReservering({ reservering_nr: nr });
-          setLaden(false);
-        });
-    } else {
-      setLaden(false);
-    }
+        .catch(() => { setReservering({ reservering_nr: nr }); setLaden(false); });
+    } else setLaden(false);
   }, []);
 
   return (
@@ -200,7 +215,6 @@ export function BevestigingsPagina() {
           <h1 style={{fontFamily:"Playfair Display,serif",fontSize:"1.8rem",fontWeight:700,marginBottom:"0.5rem"}}>Reservering bevestigd!</h1>
           <p style={{color:"#777",fontSize:"15px",marginBottom:"1.5rem",lineHeight:1.5}}>
             {reservering?.naam ? `Bedankt, ${reservering.naam}!` : "Bedankt!"} Je reservering is succesvol ontvangen.
-            {reservering?.email ? ` Een bevestigingsmail is verstuurd naar ${reservering.email}.` : ""}
           </p>
           <div style={{background:"#FFF8F3",borderRadius:"12px",padding:"1.25rem",textAlign:"left",marginBottom:"1.5rem"}}>
             {[
@@ -229,28 +243,48 @@ export function BevestigingsPagina() {
 export default function App() {
   const [view, setView] = useState("booking");
   const [step, setStep] = useState(1);
-  const [prices, setPrices] = useState({ligbed:12.50,cabine:35.00,combo:55.00});
-  const [avail, setAvail] = useState({ligbed:40,cabine:12,combo:8});
+  const [producten, setProducten] = useState([]);
+  const [ladenProducten, setLadenProducten] = useState(true);
   const [bookings, setBookings] = useState([]);
   const [selDate, setSelDate] = useState("");
   const [calY, setCalY] = useState(new Date().getFullYear());
   const [calM, setCalM] = useState(new Date().getMonth());
-  const [qtys, setQtys] = useState({ligbed:0,cabine:0,combo:0});
+  const [qtys, setQtys] = useState({});
   const [cust, setCust] = useState({name:"",email:"",phone:""});
   const [custErr, setCustErr] = useState({});
   const [payM, setPayM] = useState("ideal");
   const [processing, setProcessing] = useState(false);
   const [adminTab, setAdminTab] = useState("reserveringen");
   const [modal, setModal] = useState(null);
-  const [manual, setManual] = useState({name:"",email:"",phone:"",date:"",product:"ligbed",qty:1});
+  const [prodModal, setProdModal] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
- const todayObj = new Date();
-todayObj.setDate(todayObj.getDate() + 1);
-const today = todayObj.toISOString().split("T")[0];
-  const total = PRODS.reduce((s,p) => s + (qtys[p.id]||0) * prices[p.priceKey], 0);
-  const hasProds = PRODS.some(p => qtys[p.id] > 0);
+  // Morgen als vroegste datum
+  const morgen = new Date();
+  morgen.setDate(morgen.getDate() + 1);
+  const minDatum = morgen.toISOString().split("T")[0];
 
-  const setQty = (id, v) => setQtys(q => ({...q, [id]: Math.max(0, Math.min(v, avail[id]||0))}));
+  const total = producten.reduce((s,p) => s + (qtys[p.id]||0) * parseFloat(p.prijs), 0);
+  const hasProds = producten.some(p => (qtys[p.id]||0) > 0);
+
+  useEffect(() => { laadProducten(); }, []);
+
+  const laadProducten = async () => {
+    setLadenProducten(true);
+    try {
+      const data = await supabaseFetch('producten?actief=eq.true&order=volgorde.asc');
+      setProducten(data || []);
+      const initQtys = {};
+      (data||[]).forEach(p => initQtys[p.id] = 0);
+      setQtys(initQtys);
+    } catch(e) { console.error(e); }
+    setLadenProducten(false);
+  };
+
+  const setQty = (id, v) => {
+    const p = producten.find(p => p.id === id);
+    setQtys(q => ({...q, [id]: Math.max(0, Math.min(v, p?.beschikbaar||0))}));
+  };
 
   const validate = () => {
     const e = {};
@@ -265,16 +299,16 @@ const today = todayObj.toISOString().split("T")[0];
     if (!validate()) return;
     setProcessing(true);
     try {
-      const producten = PRODS
-        .filter(p => qtys[p.id] > 0)
-        .map(p => ({ id: p.id, naam: p.name, aantal: qtys[p.id], prijs: prices[p.priceKey] }));
+      const gekozenProducten = producten
+        .filter(p => (qtys[p.id]||0) > 0)
+        .map(p => ({ id: p.id, naam: p.naam, aantal: qtys[p.id], prijs: parseFloat(p.prijs) }));
 
       const response = await fetch(`${API}/api/betaling`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           datum: selDate,
-          producten,
+          producten: gekozenProducten,
           klant: { naam: cust.name, email: cust.email, telefoon: cust.phone },
           methode: payM
         })
@@ -292,18 +326,48 @@ const today = todayObj.toISOString().split("T")[0];
     }
   };
 
-  const cancelB = (id) => setBookings(bs => bs.map(b => b.id===id ? {...b,status:"cancelled"} : b));
+  // Productbeheer
+  const saveProduct = async (prod, fotoFile) => {
+    setUploading(true);
+    try {
+      let afbeelding_url = prod.afbeelding_url;
+      if (fotoFile) {
+        afbeelding_url = await uploadAfbeelding(fotoFile);
+      }
 
-  const addManual = () => {
-    const p = PRODS.find(p => p.id === manual.product);
-    const nb = {
-      id: genId(), name: manual.name, email: manual.email, phone: manual.phone,
-      date: manual.date, product: `${p?.name} × ${manual.qty}`,
-      total: prices[p?.priceKey] * manual.qty, status: "confirmed", method: "Handmatig"
-    };
-    setBookings(b => [nb, ...b]);
-    setModal(null);
-    setManual({name:"",email:"",phone:"",date:"",product:"ligbed",qty:1});
+      const data = {
+        naam: prod.naam,
+        omschrijving: prod.omschrijving,
+        prijs: parseFloat(prod.prijs),
+        beschikbaar: parseInt(prod.beschikbaar),
+        volgorde: parseInt(prod.volgorde) || 0,
+        actief: true,
+        afbeelding_url
+      };
+
+      if (prod.id) {
+        await supabaseFetch(`producten?id=eq.${prod.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(data)
+        });
+      } else {
+        await supabaseFetch('producten', {
+          method: 'POST',
+          body: JSON.stringify(data)
+        });
+      }
+      await laadProducten();
+      setProdModal(null);
+    } catch(e) {
+      alert('Opslaan mislukt: ' + e.message);
+    }
+    setUploading(false);
+  };
+
+  const verwijderProduct = async (id) => {
+    if (!confirm('Weet je zeker dat je dit product wilt verwijderen?')) return;
+    await supabaseFetch(`producten?id=eq.${id}`, { method: 'DELETE' });
+    await laadProducten();
   };
 
   const calCells = () => {
@@ -314,9 +378,10 @@ const today = todayObj.toISOString().split("T")[0];
     for (let i = 0; i < offset; i++) cells.push(<div key={`e${i}`} className="date-cell empty"/>);
     for (let d = 1; d <= days; d++) {
       const ds = `${calY}-${String(calM+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-      const past = ds < today, isTod = ds === today, isSel = ds === selDate;
+      const past = ds < minDatum;
+      const isSel = ds === selDate;
       cells.push(
-        <div key={d} className={`date-cell${past?" past":""}${isTod?" today":""}${isSel?" selected":""}`}
+        <div key={d} className={`date-cell${past?" past":""}${isSel?" selected":""}`}
           onClick={() => !past && setSelDate(ds)}>{d}</div>
       );
     }
@@ -326,7 +391,7 @@ const today = todayObj.toISOString().split("T")[0];
   const prevM = () => { if (calM===0){setCalM(11);setCalY(y=>y-1);}else setCalM(m=>m-1); };
   const nextM = () => { if (calM===11){setCalM(0);setCalY(y=>y+1);}else setCalM(m=>m+1); };
 
-  const STEPS = ["Datum","Producten","Gegevens","Betaling","Bevestiging"];
+  const STEPS = ["Datum","Producten","Gegevens","Betaling"];
 
   const renderStepper = () => (
     <div className="stepper">
@@ -345,13 +410,16 @@ const today = todayObj.toISOString().split("T")[0];
     <div className="app">
       <style>{STYLE}</style>
       <header className="header">
-        <div className="logo">Strand<span>Reserveren</span></div>
+        <div className="logo">Strand<span>BedHuren</span></div>
         <div style={{display:"flex",gap:8}}>
           <button className="nav-btn active">Boeken</button>
           <button className="nav-btn" onClick={() => setView("admin")}>Beheer →</button>
         </div>
       </header>
-      {step < 5 && <div className="hero"><h1>🌊 Reserveer jouw strandplek</h1><p>Kies datum, producten en betaal direct online</p></div>}
+      <div className="hero">
+        <h1>🌊 Reserveer jouw strandplek</h1>
+        <p>Kies datum, producten en betaal direct online</p>
+      </div>
       {renderStepper()}
       <div className="main">
 
@@ -378,20 +446,24 @@ const today = todayObj.toISOString().split("T")[0];
               <div className="section-title" style={{marginBottom:0}}>Kies je producten</div>
               <span className="tag">📅 {formatDate(selDate)}</span>
             </div>
-            <div className="products">
-              {PRODS.map(p => {
-                const qty = qtys[p.id], av = avail[p.id], price = prices[p.priceKey];
-                return (
-                  <div key={p.id} className={`product-card${qty>0?" selected":""}`}>
-                    {p.popular && <div className="badge">Populair</div>}
-                    <div className="p-inner">
-                      <div className="p-icon">{p.icon}</div>
-                      <div style={{flex:1}}>
-                        <div className="p-name">{p.name}</div>
-                        <div className="p-desc">{p.desc}</div>
+            {ladenProducten ? (
+              <div style={{textAlign:"center",padding:"2rem",color:"#888"}}>Producten laden...</div>
+            ) : (
+              <div className="products">
+                {producten.map(p => {
+                  const qty = qtys[p.id]||0;
+                  const av = p.beschikbaar;
+                  return (
+                    <div key={p.id} className={`product-card${qty>0?" selected":""}`}>
+                      <div className="product-img">
+                        {p.afbeelding_url ? <img src={p.afbeelding_url} alt={p.naam}/> : <span>🏖️</span>}
+                      </div>
+                      <div className="product-body">
+                        <div className="p-name">{p.naam}</div>
+                        <div className="p-desc">{p.omschrijving}</div>
                         <div className="p-footer">
                           <div>
-                            <div className="p-price">€{price.toFixed(2)} <span style={{fontWeight:300,fontSize:"0.8rem",color:"#bbb"}}>{p.perUnit}</span></div>
+                            <div className="p-price">€{parseFloat(p.prijs).toFixed(2)}</div>
                             <div className={`p-avail${av<=3?" low":""}`}>{av} beschikbaar</div>
                           </div>
                           <div className="qty-ctrl">
@@ -402,14 +474,14 @@ const today = todayObj.toISOString().split("T")[0];
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
             {hasProds && (
               <div className="sum-bar">
                 <div><div className="sum-lbl">Totaal</div><div className="sum-total">€{total.toFixed(2)}</div></div>
-                <div style={{fontSize:12,color:"#aaa"}}>{PRODS.filter(p=>qtys[p.id]>0).map(p=>`${p.name} ×${qtys[p.id]}`).join(", ")}</div>
+                <div style={{fontSize:12,color:"#aaa"}}>{producten.filter(p=>(qtys[p.id]||0)>0).map(p=>`${p.naam} ×${qtys[p.id]}`).join(", ")}</div>
               </div>
             )}
             <div className="btn-row">
@@ -437,7 +509,7 @@ const today = todayObj.toISOString().split("T")[0];
               <div style={{fontWeight:600,marginBottom:"0.5rem",fontSize:15}}>Samenvatting</div>
               <div style={{marginBottom:8}}>
                 <span className="tag">📅 {formatDate(selDate)}</span>
-                {PRODS.filter(p=>qtys[p.id]>0).map(p => <span key={p.id} className="tag">{p.icon} {p.name} ×{qtys[p.id]}</span>)}
+                {producten.filter(p=>(qtys[p.id]||0)>0).map(p => <span key={p.id} className="tag">{p.naam} ×{qtys[p.id]}</span>)}
               </div>
               <div style={{display:"flex",justifyContent:"space-between",borderTop:"1px solid #E8DDD0",paddingTop:8,marginTop:8}}>
                 <span style={{color:"#888",fontSize:14}}>Totaalbedrag</span>
@@ -466,8 +538,8 @@ const today = todayObj.toISOString().split("T")[0];
               <div className="divider"/>
               <div style={{fontWeight:600,marginBottom:"0.75rem",fontSize:15}}>Bestelling</div>
               <div className="order-box">
-                {PRODS.filter(p=>qtys[p.id]>0).map(p => (
-                  <div key={p.id} className="order-row"><span>{p.icon} {p.name} × {qtys[p.id]}</span><span>€{(qtys[p.id]*prices[p.priceKey]).toFixed(2)}</span></div>
+                {producten.filter(p=>(qtys[p.id]||0)>0).map(p => (
+                  <div key={p.id} className="order-row"><span>{p.naam} × {qtys[p.id]}</span><span>€{((qtys[p.id]||0)*parseFloat(p.prijs)).toFixed(2)}</span></div>
                 ))}
                 <div className="order-row"><span>Datum</span><span style={{fontWeight:400,color:"#777",fontSize:13}}>{formatDate(selDate)}</span></div>
                 <div className="order-row"><span>Totaal te betalen</span><span>€{total.toFixed(2)}</span></div>
@@ -491,7 +563,6 @@ const today = todayObj.toISOString().split("T")[0];
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
@@ -506,114 +577,157 @@ const today = todayObj.toISOString().split("T")[0];
       <div className="admin-layout">
         <aside className="admin-side">
           <div className="admin-side-title">Beheer</div>
-          {[{id:"reserveringen",icon:"📋",lbl:"Reserveringen"},{id:"beschikbaarheid",icon:"📊",lbl:"Beschikbaarheid"},{id:"prijzen",icon:"💶",lbl:"Prijzen"}].map(t => (
+          {[
+            {id:"reserveringen",icon:"📋",lbl:"Reserveringen"},
+            {id:"producten",icon:"🏖️",lbl:"Producten"},
+          ].map(t => (
             <div key={t.id} className={`admin-nav${adminTab===t.id?" active":""}`} onClick={() => setAdminTab(t.id)}><span>{t.icon}</span>{t.lbl}</div>
           ))}
         </aside>
         <main className="admin-main">
+
           {adminTab==="reserveringen" && (
             <>
-              <div className="admin-hdr">
-                <div className="admin-title">Reserveringen</div>
-                <button className="btn-p" style={{width:"auto",padding:"8px 16px",fontSize:13}} onClick={() => setModal("add")}>+ Handmatig toevoegen</button>
-              </div>
+              <div className="admin-hdr"><div className="admin-title">Reserveringen</div></div>
               <div className="stats">
                 <div className="stat"><div className="stat-lbl">Totaal</div><div className="stat-val">{bookings.length}</div></div>
                 <div className="stat"><div className="stat-lbl">Bevestigd</div><div className="stat-val" style={{color:"#0F6E56"}}>{bookings.filter(b=>b.status==="confirmed").length}</div></div>
-                <div className="stat"><div className="stat-lbl">Omzet</div><div className="stat-val">€{bookings.filter(b=>b.status==="confirmed").reduce((s,b)=>s+b.total,0).toFixed(0)}</div></div>
-                <div className="stat"><div className="stat-lbl">Wachtend</div><div className="stat-val" style={{color:"#854F0B"}}>{bookings.filter(b=>b.status==="pending").length}</div></div>
+                <div className="stat"><div className="stat-lbl">Omzet</div><div className="stat-val">€{bookings.filter(b=>b.status==="confirmed").reduce((s,b)=>s+(b.total||0),0).toFixed(0)}</div></div>
               </div>
-              <div style={{overflowX:"auto"}}>
-                <table className="tbl">
-                  <thead><tr><th>ID</th><th>Naam</th><th>Datum</th><th>Product</th><th>Methode</th><th>Totaal</th><th>Status</th><th></th></tr></thead>
-                  <tbody>
-                    {bookings.map(b => (
-                      <tr key={b.id}>
-                        <td style={{fontWeight:700,color:"#C25B20",fontSize:12}}>{b.id}</td>
-                        <td><div style={{fontWeight:600,fontSize:13}}>{b.name}</div><div style={{fontSize:11,color:"#aaa"}}>{b.email}</div></td>
-                        <td style={{fontSize:12}}>{formatDate(b.date)}</td>
-                        <td style={{fontSize:12}}>{b.product}</td>
-                        <td style={{fontSize:12}}>{b.method}</td>
-                        <td style={{fontWeight:700}}>€{b.total?.toFixed(2)}</td>
-                        <td><span className={`sbadge ${b.status}`}>{b.status==="confirmed"?"Bevestigd":b.status==="pending"?"Wachtend":"Geannuleerd"}</span></td>
-                        <td>{b.status!=="cancelled" && <button className="icon-btn danger" onClick={() => cancelB(b.id)}>✕</button>}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {bookings.length === 0 ? (
+                <div style={{background:"#fff",borderRadius:12,padding:"2rem",textAlign:"center",color:"#888",border:"1px solid #E8DDD0"}}>
+                  Nog geen reserveringen. Reserveringen verschijnen hier na de eerste boeking.
+                </div>
+              ) : (
+                <div style={{overflowX:"auto"}}>
+                  <table className="tbl">
+                    <thead><tr><th>ID</th><th>Naam</th><th>Datum</th><th>Product</th><th>Totaal</th><th>Status</th></tr></thead>
+                    <tbody>
+                      {bookings.map(b => (
+                        <tr key={b.id}>
+                          <td style={{fontWeight:700,color:"#C25B20",fontSize:12}}>{b.reservering_nr}</td>
+                          <td><div style={{fontWeight:600,fontSize:13}}>{b.naam}</div><div style={{fontSize:11,color:"#aaa"}}>{b.email}</div></td>
+                          <td style={{fontSize:12}}>{formatDate(b.datum)}</td>
+                          <td style={{fontSize:12}}>{Array.isArray(b.producten) ? b.producten.map(p=>`${p.naam} ×${p.aantal}`).join(", ") : "-"}</td>
+                          <td style={{fontWeight:700}}>€{parseFloat(b.totaal||0).toFixed(2)}</td>
+                          <td><span className={`sbadge ${b.status}`}>{b.status==="confirmed"?"Bevestigd":b.status==="pending"?"Wachtend":"Geannuleerd"}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </>
           )}
-          {adminTab==="beschikbaarheid" && (
+
+          {adminTab==="producten" && (
             <>
-              <div className="admin-hdr"><div className="admin-title">Beschikbaarheid</div></div>
-              <div className="avail-list">
-                {PRODS.map(p => (
-                  <div key={p.id} className="avail-row">
-                    <div style={{fontWeight:600,fontSize:15,display:"flex",alignItems:"center",gap:10}}>
-                      <span style={{fontSize:"1.5rem"}}>{p.icon}</span>
-                      <div><div>{p.name}</div><div style={{fontSize:12,color:"#aaa"}}>€{prices[p.priceKey].toFixed(2)} {p.perUnit}</div></div>
+              <div className="admin-hdr">
+                <div className="admin-title">Producten ({producten.length}/10)</div>
+                {producten.length < 10 && (
+                  <button className="btn-p" style={{width:"auto",padding:"8px 16px",fontSize:13}} onClick={() => setProdModal({naam:"",omschrijving:"",prijs:"",beschikbaar:"",volgorde:producten.length+1,afbeelding_url:""})}>
+                    + Nieuw product
+                  </button>
+                )}
+              </div>
+              <div className="prod-grid">
+                {producten.map(p => (
+                  <div key={p.id} className="prod-admin-card">
+                    <div className="prod-admin-img">
+                      {p.afbeelding_url ? <img src={p.afbeelding_url} alt={p.naam}/> : <span>🏖️</span>}
                     </div>
-                    <div style={{display:"flex",alignItems:"center",gap:12}}>
-                      <button className="qty-btn" onClick={() => setAvail(a => ({...a,[p.id]:Math.max(0,a[p.id]-1)}))}>−</button>
-                      <span style={{fontSize:"1.2rem",fontWeight:700,color:"#C25B20",minWidth:36,textAlign:"center"}}>{avail[p.id]}</span>
-                      <button className="qty-btn" onClick={() => setAvail(a => ({...a,[p.id]:a[p.id]+1}))}>+</button>
+                    <div className="prod-admin-body">
+                      <div className="prod-admin-name">{p.naam}</div>
+                      <div className="prod-admin-desc">{p.omschrijving}</div>
+                      <div className="prod-admin-footer">
+                        <div>
+                          <div style={{fontWeight:700,color:"#C25B20"}}>€{parseFloat(p.prijs).toFixed(2)}</div>
+                          <div style={{fontSize:12,color:"#888"}}>{p.beschikbaar} beschikbaar</div>
+                        </div>
+                        <div style={{display:"flex",gap:6}}>
+                          <button className="icon-btn" onClick={() => setProdModal({...p})}>✏️</button>
+                          <button className="icon-btn danger" onClick={() => verwijderProduct(p.id)}>🗑️</button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             </>
           )}
-          {adminTab==="prijzen" && (
-            <>
-              <div className="admin-hdr"><div className="admin-title">Prijzen instellen</div></div>
-              <div className="price-grid">
-                {PRODS.map(p => (
-                  <div key={p.id} className="price-card">
-                    <div style={{fontSize:"1.8rem",marginBottom:6}}>{p.icon}</div>
-                    <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{p.name}</div>
-                    <div style={{fontSize:11,color:"#aaa",marginBottom:10}}>{p.perUnit}</div>
-                    <div className="price-input-row">
-                      <span style={{fontSize:15,fontWeight:600,color:"#555"}}>€</span>
-                      <input className="price-input" type="number" min="0" step="0.5" value={prices[p.priceKey]}
-                        onChange={e => setPrices(pr => ({...pr,[p.priceKey]:parseFloat(e.target.value)||0}))} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+
         </main>
       </div>
-      {modal==="add" && (
-        <div className="modal-bg" onClick={() => setModal(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-hdr"><div className="modal-title">Handmatige reservering</div><button className="close-x" onClick={() => setModal(null)}>✕</button></div>
-            <div className="form-grid">
-              {[["name","Naam"],["email","E-mail"],["phone","Telefoon"]].map(([k,l]) => (
-                <div key={k} className="form-group">
-                  <label className="form-label">{l}</label>
-                  <input className="form-input" value={manual[k]} onChange={e => setManual(b => ({...b,[k]:e.target.value}))} />
-                </div>
-              ))}
-              <div className="form-group"><label className="form-label">Datum</label>
-                <input className="form-input" type="date" value={manual.date} onChange={e => setManual(b => ({...b,date:e.target.value}))} /></div>
-              <div className="form-group"><label className="form-label">Product</label>
-                <select className="form-input" value={manual.product} onChange={e => setManual(b => ({...b,product:e.target.value}))}>
-                  {PRODS.map(p => <option key={p.id} value={p.id}>{p.name} — €{prices[p.priceKey].toFixed(2)}</option>)}
-                </select></div>
-              <div className="form-group"><label className="form-label">Aantal</label>
-                <input className="form-input" type="number" min="1" value={manual.qty} onChange={e => setManual(b => ({...b,qty:parseInt(e.target.value)||1}))} /></div>
-            </div>
-            <div style={{marginTop:"1rem",display:"flex",gap:8}}>
-              <button className="btn-s" onClick={() => setModal(null)}>Annuleren</button>
-              <button className="btn-p" style={{flex:1}} onClick={addManual} disabled={!manual.name||!manual.date}>Aanmaken</button>
-            </div>
-          </div>
-        </div>
-      )}
+
+      {prodModal && <ProductModal prod={prodModal} onSave={saveProduct} onClose={() => setProdModal(null)} uploading={uploading} />}
     </div>
   );
 
   return view==="booking" ? renderBooking() : renderAdmin();
+}
+
+function ProductModal({ prod, onSave, onClose, uploading }) {
+  const [form, setForm] = useState(prod);
+  const [preview, setPreview] = useState(prod.afbeelding_url || null);
+  const [fotoFile, setFotoFile] = useState(null);
+
+  const handleFoto = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setFotoFile(file);
+    setPreview(URL.createObjectURL(file));
+  };
+
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-hdr">
+          <div className="modal-title">{prod.id ? "Product bewerken" : "Nieuw product"}</div>
+          <button className="close-x" onClick={onClose}>✕</button>
+        </div>
+        <div className="form-grid">
+          <div className="form-group">
+            <label className="form-label">Naam *</label>
+            <input className="form-input" value={form.naam} onChange={e => setForm(f=>({...f,naam:e.target.value}))} placeholder="bijv. Ligbed" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Omschrijving</label>
+            <textarea className="form-input" rows={3} value={form.omschrijving} onChange={e => setForm(f=>({...f,omschrijving:e.target.value}))} placeholder="Korte beschrijving van het product..." style={{resize:"vertical"}} />
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div className="form-group">
+              <label className="form-label">Prijs (€) *</label>
+              <input className="form-input" type="number" min="0" step="0.50" value={form.prijs} onChange={e => setForm(f=>({...f,prijs:e.target.value}))} placeholder="12.50" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Beschikbaar *</label>
+              <input className="form-input" type="number" min="0" value={form.beschikbaar} onChange={e => setForm(f=>({...f,beschikbaar:e.target.value}))} placeholder="40" />
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Foto</label>
+            <label className="upload-area">
+              <input type="file" accept="image/*" style={{display:"none"}} onChange={handleFoto} />
+              {preview ? (
+                <img src={preview} className="upload-preview" alt="preview"/>
+              ) : (
+                <div>
+                  <div style={{fontSize:"2rem",marginBottom:8}}>📷</div>
+                  <div style={{fontSize:14,color:"#888"}}>Klik om een foto te uploaden</div>
+                  <div style={{fontSize:12,color:"#bbb",marginTop:4}}>JPG, PNG, WEBP — max 5MB</div>
+                </div>
+              )}
+            </label>
+            {preview && <button className="btn-s" style={{marginTop:8,fontSize:12,padding:"6px 12px"}} onClick={() => {setPreview(null);setFotoFile(null);setForm(f=>({...f,afbeelding_url:""}));}}>Foto verwijderen</button>}
+          </div>
+        </div>
+        <div style={{marginTop:"1.25rem",display:"flex",gap:8}}>
+          <button className="btn-s" onClick={onClose}>Annuleren</button>
+          <button className="btn-p" style={{flex:1}} disabled={!form.naam||!form.prijs||uploading} onClick={() => onSave(form, fotoFile)}>
+            {uploading ? "Bezig met opslaan..." : "Opslaan"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
