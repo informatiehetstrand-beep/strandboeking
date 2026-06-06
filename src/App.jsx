@@ -244,7 +244,9 @@ export default function App() {
   const [modal, setModal] = useState(null);
   const [manual, setManual] = useState({name:"",email:"",phone:"",date:"",product:"ligbed",qty:1});
 
-  const today = new Date().toISOString().split("T")[0];
+ const todayObj = new Date();
+todayObj.setDate(todayObj.getDate() + 1);
+const today = todayObj.toISOString().split("T")[0];
   const total = PRODS.reduce((s,p) => s + (qtys[p.id]||0) * prices[p.priceKey], 0);
   const hasProds = PRODS.some(p => qtys[p.id] > 0);
 
